@@ -105,6 +105,12 @@ variable "logging_bucket" {
   default = null
 }
 
+variable "logging_hive_compatible_path" {
+  description = "Use Hive-compatible S3 prefix (year=YYYY/month=MM/...) for Athena partition discovery"
+  type        = bool
+  default     = false
+}
+
 # Override S3 bucket used
 # variable "bucket_domain_name" {
 #   default = ""

@@ -16,6 +16,5 @@ locals {
 
   #sse_algorithm = "AES256"
 
-  logging_bucket = var.logging_bucket != "" ? var.logging_bucket : "${module.defaults.name}-${terraform.workspace}-edge-logs"
 }
 

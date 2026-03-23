@@ -193,20 +193,6 @@ resource "aws_cloudfront_distribution" "main" {
     }
   }
   
-  dynamic "logging_config" {
-    for_each = local.logging_bucket != null ? [1] : []
-    content {
-      include_cookies = false
-      bucket          = try("${local.logging_bucket}.s3.amazonaws.com", null)
-      prefix          = "AWSLogs/${local.account_id}/CloudFront/${var.aliases[0]}/"
-    }
-  }
-  # logging_config {
-  #   include_cookies = false
-  #   bucket          = try("${local.logging_bucket}.s3.amazonaws.com", null)
-  #   prefix          = "AWSLogs/${local.account_id}/CloudFront/${var.aliases[0]}/"
-  # }
-
   tags = merge(
     local.tags,
     {
