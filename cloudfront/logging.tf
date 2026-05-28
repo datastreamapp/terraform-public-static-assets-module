@@ -18,12 +18,24 @@
 #   - hive_compatible_path_defaults_false / _override_true
 #   - distribution_has_no_legacy_logging_config
 #
-# Side effects on consumer apply (TLDR — see docs/DECISIONS.md for full analysis):
-#   - From v5.1.0: ~no-op (already had v2 logging)
-#   - From v4.x (skipping v6.0.x): clean swap legacy logging_config → v2 logging
-#   - From v6.0.2-v6.0.4: legacy logging_config removed + 3 aws_cloudwatch_log_delivery_*
-#     created; brief log-path switch window during apply
-#   - No retention, encryption, IAM, or KMS changes — only the S3 prefix structure
+# What changes in consumer `terraform plan` after bumping to v6.1.0
+# (see docs/DECISIONS.md for the full breakdown):
+#
+# Upgrading from v5.1.0:
+#   No changes to logging. v5.1.0 already had this same v2 logging code.
+#
+# Upgrading from v4.x (and never deployed v6.0.0–v6.0.4):
+#   The old inline `logging_config` block on the CloudFront distribution is
+#   replaced by the three log-delivery resources defined below. Smooth swap.
+#
+# Upgrading from v6.0.2, v6.0.3, or v6.0.4:
+#   The inline `logging_config` block is removed AND the three log-delivery
+#   resources below are created. Log files start landing in the partitioned
+#   path (.../{yyyy}/{MM}/{dd}/{HH}/) instead of a flat directory. Brief
+#   log-destination switchover during apply.
+#
+# What does NOT change in any upgrade path:
+#   Log retention, encryption, IAM, KMS — only the S3 path layout.
 
 resource "aws_cloudwatch_log_delivery_destination" "main" {
   count = var.logging_bucket != null ? 1 : 0
