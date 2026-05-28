@@ -10,7 +10,15 @@ Newest entries first.
 
 ### Context
 
-Between v5.1.0 and v6.0.2, `cloudfront/logging.tf` was deleted and replaced with the legacy `logging_config {}` block inside `aws_cloudfront_distribution.main`. The two approaches differ critically in their S3 path layout:
+Between v5.1.0 and v6.0.2, `cloudfront/logging.tf` was deleted and replaced with the legacy `logging_config {}` block inside `aws_cloudfront_distribution.main`.
+
+**Why it was deleted — and why that matters.** The deletion happened in commit `a4539d4` (message: "remove use of defaults"), authored during the v6.0.x series. The commit's stated purpose was to remove a third-party `terraform-defaults` module that had been sourced in `cloudfront/locals.tf` — a reasonable cleanup. The deletion of `logging.tf` appears to have been an unintentional side effect of that refactor, not a deliberate decision to change the logging mechanism.
+
+There was no CHANGELOG entry, no issue, no PR discussion, and no migration guide explaining that the S3 log path layout had changed. Consumers had no signal that upgrading to v6.0.x would silently break their Athena queries. The breakage was invisible at plan time — it would only surface later, when someone queried CloudFront logs in Athena and got zero rows.
+
+This is exactly why `docs/DECISIONS.md` exists in v6.1.0: so that future engineers making changes to this module understand the downstream contracts before touching logging, path layout, or anything Athena consumers depend on.
+
+The two approaches differ critically in their S3 path layout:
 
 | Logging mode | S3 path layout |
 |---|---|
