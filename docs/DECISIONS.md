@@ -30,6 +30,40 @@ In v6.1.0:
 3. **Re-added the `logging_hive_compatible_path` variable** in `cloudfront/variables.tf` that was removed in v6.0.2.
 4. **Added 7 `terraform test` cases** in `cloudfront/tests/logging.tftest.hcl` to lock in this behavior so it can't be silently reverted again without test failure.
 
+### Side effects analysis
+
+#### Intended effects (the point of the restoration)
+
+1. **CloudFront access logs return to partitioned path layout** — `AWSLogs/{account}/CloudFront/{domain}/{yyyy}/{MM}/{dd}/{HH}/` instead of v6.0.2's flat `AWSLogs/{account}/CloudFront/{domain}/` layout. Downstream Athena partition projections keep working.
+2. **Three resources reappear in state** — `aws_cloudwatch_log_delivery_destination.main`, `aws_cloudwatch_log_delivery_source.main`, `aws_cloudwatch_log_delivery.main` (gated by `count = var.logging_bucket != null ? 1 : 0`).
+3. **Legacy `logging_config {}` block removed** from `aws_cloudfront_distribution.main` in the same release — prevents double-logging.
+
+#### Per-consumer-state plan outcomes
+
+| Consumer state | Plan outcome on bumping to v6.1.0 |
+|---|---|
+| Already on v5.1.0 (had v2 logging) | Plan is ~no-op for logging resources |
+| Was on v6.0.2–v6.0.4 (had legacy `logging_config`) | Plan shows: legacy `logging_config` removed from distribution + 3 `aws_cloudwatch_log_delivery_*` resources created. Brief window where logs might switch paths during apply. |
+| On v4.x and skipping v6.0.x entirely | Plan is a clean swap — v4.x had legacy `logging_config`, v6.1.0 has v2 logging; one consistent change |
+
+#### Operational side effects
+
+- ✅ **Athena partition projection consumers benefit** — their queries continue to find logs after upgrade. Primary motivation.
+- ⚠️ **Anyone who built tooling against v6.0.2–v6.0.4's flat-path layout would see their tooling break.** Unlikely in practice given how short-lived those versions were; no known consumers had migrated to them.
+- ⚠️ **`logging_hive_compatible_path` variable re-appears** — consumers who removed references to it after v6.0.2 deleted it would need to verify they don't pass an unsupported variable. No known consumer uses this variable explicitly.
+
+#### What is NOT a side effect
+
+- No change to log retention or S3 lifecycle on the log bucket
+- No change to log content or format — only the S3 prefix structure
+- No IAM changes
+- No KMS or encryption changes
+- No impact on the `route53-kms` `moved {}` blocks or `arn` alias work (separate decision below)
+
+#### How tests bound the side effects
+
+The 7 `terraform test` cases in `cloudfront/tests/logging.tftest.hcl` verify the intended behavior and will fail loudly if a future version silently regresses to flat logging again. The side effects are bounded by the tests and observable in plan output before any apply runs.
+
 ### Consequences
 
 - The `suffix_path` value is now part of the module's **public contract**. Changing it requires coordinated downstream Athena schema migration in every consumer.

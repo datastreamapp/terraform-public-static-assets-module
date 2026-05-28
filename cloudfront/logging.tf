@@ -17,6 +17,13 @@
 #   - logging_enabled_creates_destination / _source / _delivery
 #   - hive_compatible_path_defaults_false / _override_true
 #   - distribution_has_no_legacy_logging_config
+#
+# Side effects on consumer apply (TLDR — see docs/DECISIONS.md for full analysis):
+#   - From v5.1.0: ~no-op (already had v2 logging)
+#   - From v4.x (skipping v6.0.x): clean swap legacy logging_config → v2 logging
+#   - From v6.0.2-v6.0.4: legacy logging_config removed + 3 aws_cloudwatch_log_delivery_*
+#     created; brief log-path switch window during apply
+#   - No retention, encryption, IAM, or KMS changes — only the S3 prefix structure
 
 resource "aws_cloudwatch_log_delivery_destination" "main" {
   count = var.logging_bucket != null ? 1 : 0
