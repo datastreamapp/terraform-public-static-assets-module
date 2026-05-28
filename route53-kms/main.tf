@@ -51,3 +51,14 @@ resource "aws_kms_key" "main" {
     Version = "2012-10-17"
   })
 }
+
+# Migration support for consumers upgrading from v4.x where these resources were named .route53
+moved {
+  from = aws_kms_key.route53
+  to   = aws_kms_key.main
+}
+
+moved {
+  from = aws_kms_alias.route53
+  to   = aws_kms_alias.main
+}
