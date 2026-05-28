@@ -6,6 +6,43 @@ Newest entries first.
 
 ---
 
+## 2026-05-28 — v6.1.0: Restore var.default_tags passthrough in cloudfront/locals.tf
+
+### Context
+
+v6.0.2's "remove use of defaults" commit replaced `tags = module.defaults.tags` with
+`tags = {}` in `cloudfront/locals.tf`. The old `terraform-defaults` third-party module
+(sourced from `git@github.com:willfarrell/terraform-defaults`) had been auto-injecting
+tags like `Environment`, `Terraform: true`, `Description` into every CloudFront distribution.
+When that dependency was removed, the hardcoded `tags = {}` silently dropped all those tags
+from every CloudFront resource on the next consumer apply.
+
+The `variable "default_tags"` remained in `variables.tf` with `default = {}` — it was just
+never wired up in locals after the removal.
+
+Discovered during dry-run `terraform plan` of the Phase 1 consumer migration (datastreamapp/issues#1891).
+
+### Decision
+
+Restored the passthrough: `tags = var.default_tags` in `cloudfront/locals.tf`.
+
+Consumer behavior:
+- Consumers NOT passing `default_tags` → `tags = {}` (same as v6.0.2 behavior, no regression)
+- Consumers passing `default_tags = {...}` → tags forwarded to CloudFront resources as before
+- Consumers using AWS provider `default_tags` block → tags flow via `tags_all` regardless; `var.default_tags` is additive
+
+### Consequences
+
+- Tag ownership in plans: when a consumer uses AWS provider `default_tags` + our restored passthrough,
+  Terraform shows `.tags` shrinking and `.tags_all` growing — because tags shift from resource-level
+  to provider-level ownership. AWS-side tags are preserved; only the Terraform tracking mechanism changes.
+- A plan running with `default_tags` uncommented will show `tags_all` updates on ALL resources that
+  provider manages (not just CloudFront) — this is expected behavior, not a regression.
+- Future maintainers: do NOT hardcode `tags = {}` when removing tag-injection dependencies. Always
+  preserve the `var.default_tags` passthrough so consumers retain control.
+
+---
+
 ## 2026-05-28 — v6.1.0: Restore v2 CloudFront logging
 
 ### Context
