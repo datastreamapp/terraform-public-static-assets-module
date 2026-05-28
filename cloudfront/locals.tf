@@ -15,7 +15,5 @@ locals {
   origins = concat(var.origins, var.origin_groups)
 
   #sse_algorithm = "AES256"
-
-  logging_bucket = var.logging_bucket != "" ? var.logging_bucket : "${local.name}-${terraform.workspace}-edge-logs"
 }
 
