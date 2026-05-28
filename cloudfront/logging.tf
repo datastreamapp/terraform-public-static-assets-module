@@ -39,7 +39,7 @@
 
 resource "aws_cloudwatch_log_delivery_destination" "main" {
   count = var.logging_bucket != null ? 1 : 0
-  name  = "${var.name}-logs"
+  name  = "${local.name}-logs"
 
   delivery_destination_configuration {
     destination_resource_arn = "arn:aws:s3:::${var.logging_bucket}"
@@ -48,7 +48,7 @@ resource "aws_cloudwatch_log_delivery_destination" "main" {
 
 resource "aws_cloudwatch_log_delivery_source" "main" {
   count        = var.logging_bucket != null ? 1 : 0
-  name         = var.name
+  name         = local.name
   log_type     = "ACCESS_LOGS"
   resource_arn = aws_cloudfront_distribution.main.arn
 }
