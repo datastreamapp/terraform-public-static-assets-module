@@ -1,5 +1,5 @@
 resource "aws_cloudfront_origin_access_identity" "main" {
-  comment = "${var.aliases[0]}"
+  comment = var.aliases[0]
 }
 
 resource "aws_cloudfront_distribution" "main" {
@@ -21,9 +21,9 @@ resource "aws_cloudfront_distribution" "main" {
   dynamic "origin" {
     for_each = var.origins
     content {
-      domain_name = origin.value.domain_name
-      origin_id   = origin.value.origin_id
-      origin_path = origin.value.origin_path
+      domain_name              = origin.value.domain_name
+      origin_id                = origin.value.origin_id
+      origin_path              = origin.value.origin_path
       origin_access_control_id = origin.value.origin_access_control_id
 
       dynamic "s3_origin_config" {
@@ -48,7 +48,7 @@ resource "aws_cloudfront_distribution" "main" {
       dynamic "origin_shield" {
         for_each = origin.value.origin_shield != "disabled" ? [1] : []
         content {
-          enabled = true
+          enabled              = true
           origin_shield_region = origin.value.origin_shield
         }
       }
@@ -56,7 +56,7 @@ resource "aws_cloudfront_distribution" "main" {
       dynamic "custom_header" {
         for_each = origin.value.custom_headers
         content {
-          name = custom_header.value.name
+          name  = custom_header.value.name
           value = custom_header.value.value
         }
       }
@@ -80,15 +80,15 @@ resource "aws_cloudfront_distribution" "main" {
   }
 
   dynamic "ordered_cache_behavior" {
-    for_each = slice(var.behaviors, 0, length(var.behaviors)-1) # all except last item
+    for_each = slice(var.behaviors, 0, length(var.behaviors) - 1) # all except last item
     content {
-      target_origin_id = ordered_cache_behavior.value.origin_id
-      path_pattern     = ordered_cache_behavior.value.path_pattern
+      target_origin_id       = ordered_cache_behavior.value.origin_id
+      path_pattern           = ordered_cache_behavior.value.path_pattern
       viewer_protocol_policy = ordered_cache_behavior.value.viewer_protocol_policy
 
       allowed_methods = try(ordered_cache_behavior.value.allowed_methods, [])
 
-      trusted_key_groups =  ordered_cache_behavior.value.trusted_key_groups
+      trusted_key_groups = ordered_cache_behavior.value.trusted_key_groups
 
       # Broken out on purpose to prevent state issues (re-creating edge@lambda when index changes)
       dynamic "lambda_function_association" {
@@ -99,7 +99,7 @@ resource "aws_cloudfront_distribution" "main" {
         }
       }
       dynamic "lambda_function_association" {
-        for_each = ordered_cache_behavior.value.lambda.origin-request != null? [1] : []
+        for_each = ordered_cache_behavior.value.lambda.origin-request != null ? [1] : []
         content {
           event_type = "origin-request"
           lambda_arn = ordered_cache_behavior.value.lambda.origin-request
@@ -121,22 +121,22 @@ resource "aws_cloudfront_distribution" "main" {
       }
 
       response_headers_policy_id = ordered_cache_behavior.value.response_headers_policy_id
-      cached_methods = ordered_cache_behavior.value.cached_methods
-      cache_policy_id = ordered_cache_behavior.value.cache_policy_id
-      origin_request_policy_id = ordered_cache_behavior.value.origin_request_policy_id
+      cached_methods             = ordered_cache_behavior.value.cached_methods
+      cache_policy_id            = ordered_cache_behavior.value.cache_policy_id
+      origin_request_policy_id   = ordered_cache_behavior.value.origin_request_policy_id
       #compress = ordered_cache_behavior.value.compress
     }
   }
 
   dynamic "default_cache_behavior" {
-    for_each = slice(var.behaviors, length(var.behaviors)-1, length(var.behaviors)) # Last item
+    for_each = slice(var.behaviors, length(var.behaviors) - 1, length(var.behaviors)) # Last item
     content {
-      target_origin_id = default_cache_behavior.value.origin_id
+      target_origin_id       = default_cache_behavior.value.origin_id
       viewer_protocol_policy = default_cache_behavior.value.viewer_protocol_policy
 
       allowed_methods = try(default_cache_behavior.value.allowed_methods, [])
 
-      trusted_key_groups =  default_cache_behavior.value.trusted_key_groups
+      trusted_key_groups = default_cache_behavior.value.trusted_key_groups
 
       # Broken out on purpose to prevent state issues (re-creating edge@lambda when index changes)
       dynamic "lambda_function_association" {
@@ -168,10 +168,10 @@ resource "aws_cloudfront_distribution" "main" {
         }
       }
 
-      origin_request_policy_id = default_cache_behavior.value.origin_request_policy_id
+      origin_request_policy_id   = default_cache_behavior.value.origin_request_policy_id
       response_headers_policy_id = default_cache_behavior.value.response_headers_policy_id
-      cached_methods = default_cache_behavior.value.cached_methods
-      cache_policy_id = default_cache_behavior.value.cache_policy_id
+      cached_methods             = default_cache_behavior.value.cached_methods
+      cache_policy_id            = default_cache_behavior.value.cache_policy_id
       #compress = default_cache_behavior.value.compress
     }
   }
@@ -192,20 +192,6 @@ resource "aws_cloudfront_distribution" "main" {
       response_page_path = custom_error_response.value
     }
   }
-  
-  dynamic "logging_config" {
-    for_each = local.logging_bucket != null ? [1] : []
-    content {
-      include_cookies = false
-      bucket          = try("${local.logging_bucket}.s3.amazonaws.com", null)
-      prefix          = "AWSLogs/${local.account_id}/CloudFront/${var.aliases[0]}/"
-    }
-  }
-  # logging_config {
-  #   include_cookies = false
-  #   bucket          = try("${local.logging_bucket}.s3.amazonaws.com", null)
-  #   prefix          = "AWSLogs/${local.account_id}/CloudFront/${var.aliases[0]}/"
-  # }
 
   tags = merge(
     local.tags,
