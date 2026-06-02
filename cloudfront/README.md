@@ -80,7 +80,8 @@ module "app" {
 - **web_acl_id:** WAF ACL ID
 - **lambda:** lambda@Edge functions
 - **cors_origins:** URL to apply to CORS. [Default: `["*"]`]
-- **error_codes:** map of paths for error codes. Defaults: none
+- **error_codes:** map of error code → response page path. Allowed keys: `400, 403, 404, 405, 414, 416, 500, 501, 502, 503, 504`. Defaults: none
+- **error_code_response_overrides:** optional map of error code → HTTP response code to return. Allows returning a different status (e.g. `503`) than the origin error (e.g. `502`). Keys must match keys in `error_codes`. Omitted keys fall back to the error code. Allowed values: `200, 400, 403, 404, 405, 414, 416, 500, 501, 502, 503, 504`. Default: `{}`
 - **logging_bucket:** Bucket id for where teh logs should be sent
 
 ## Output

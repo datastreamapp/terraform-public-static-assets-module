@@ -14,3 +14,4 @@ node_modules
 
 # OS
 .DS_Store
+cloudfront/.terraform.lock.hcl
