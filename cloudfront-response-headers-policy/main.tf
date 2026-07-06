@@ -1,5 +1,5 @@
 resource "aws_cloudfront_response_headers_policy" "main" {
-  name    = var.name
+  name = var.name
   #comment = "Security headers"
 
   cors_config {
@@ -14,19 +14,21 @@ resource "aws_cloudfront_response_headers_policy" "main" {
       items = var.cors.access_control_allow_origins
     }
     access_control_max_age_sec = var.cors.access_control_max_age_sec
-    origin_override = var.cors.override
+    origin_override            = var.cors.override
   }
 
   security_headers_config {
-    
+
     dynamic "content_security_policy" {
-      for_each = var.content_security_policy != null && contains(var.mimes, "text/html") ? [1] : []
+      # application/javascript included because workers/service workers read
+      # their CSP from the script's own response headers
+      for_each = var.content_security_policy != null && (contains(var.mimes, "text/html") || contains(var.mimes, "application/javascript")) ? [1] : []
       content {
         content_security_policy = try("${var.content_security_policy.value};report-to ${var.content_security_policy.report_to};report-uri ${var.report_to.default}", var.content_security_policy.value)
-        override = try(var.content_security_policy.override, false)
+        override                = try(var.content_security_policy.override, false)
       }
     }
-    
+
     # Strict-Transport-Security: max-age=63072000; includeSubdomains; preload
     strict_transport_security {
       access_control_max_age_sec = var.strict_transport_security.access_control_max_age_sec
@@ -34,16 +36,16 @@ resource "aws_cloudfront_response_headers_policy" "main" {
       preload                    = var.strict_transport_security.preload
       override                   = var.strict_transport_security.override
     }
-    
+
     # Referrer-Policy: no-referrer
     dynamic "referrer_policy" {
       for_each = var.referrer_policy != null && contains(var.mimes, "text/html") ? [1] : []
       content {
-        referrer_policy = try("${var.referrer_policy.value}",null)
-        override = try(var.referrer_policy.override, false)
+        referrer_policy = try("${var.referrer_policy.value}", null)
+        override        = try(var.referrer_policy.override, false)
       }
     }
-    
+
     # X-Content-Type-Options: nosniff
     dynamic "content_type_options" {
       for_each = var.x_content_type_options != null && contains(var.mimes, "text/html") ? [1] : []
@@ -51,16 +53,16 @@ resource "aws_cloudfront_response_headers_policy" "main" {
         override = try(var.x_content_type_options.override, false)
       }
     }
-    
+
     # X-Frame-Options: DENY
     dynamic "frame_options" {
-      for_each =  var.x_frame_options != null  && contains(var.mimes, "text/html") ? [1] : []
+      for_each = var.x_frame_options != null && contains(var.mimes, "text/html") ? [1] : []
       content {
-        frame_option = try(var.x_frame_options.value,null)
+        frame_option = try(var.x_frame_options.value, null)
         override     = try(var.x_content_type_options.override, false)
       }
     }
-    
+
     # X-XSS-Protection: 1; mode=block
     # dynamic "xss_protection" {
     #   for_each = var.x_xss_protection != null && contains(var.mimes, "text/html") ? [1] : []
@@ -71,12 +73,12 @@ resource "aws_cloudfront_response_headers_policy" "main" {
     #   }
     # }
   }
-  
+
   server_timing_headers_config {
     enabled       = var.server_timing.sampling_rate != 0
     sampling_rate = var.server_timing.sampling_rate
   }
-  
+
   # Max of 10
   remove_headers_config {
     # items {
@@ -113,20 +115,20 @@ resource "aws_cloudfront_response_headers_policy" "main" {
     #   header   = "X-WebKit-CSP"
     # }
     items {
-      header   = "X-XSS-Protection"
+      header = "X-XSS-Protection"
     }
-    
+
     dynamic "items" {
       for_each = var.remove_headers
       content {
-        header   = items.value.header
+        header = items.value.header
       }
     }
   }
-  
+
   # Max of >12, disable -Report-Only
   custom_headers_config {
-  
+
     # Move to remove, when allowed
     items {
       header   = "Server"
@@ -139,7 +141,7 @@ resource "aws_cloudfront_response_headers_policy" "main" {
       override = true
     }*/
 
-    
+
     # Can be set using custom_headers, but can be set another way
     # dynamic "items" {
     #   for_each = var.content_security_policy != null && contains(var.mimes, "text/html") ? [1] : []
@@ -149,7 +151,7 @@ resource "aws_cloudfront_response_headers_policy" "main" {
     #     override = try(var.content_security_policy.override, false)
     #   }
     # }
-    
+
     # dynamic "items" {
     #   for_each = var.content_security_policy_report_only != null && contains(var.mimes, "text/html") ? [1] : []
     #   content {
@@ -158,12 +160,12 @@ resource "aws_cloudfront_response_headers_policy" "main" {
     #     override = try(var.content_security_policy_report_only.override, false)
     #   }
     # }
-    
+
     dynamic "items" {
       for_each = var.cross_origin_embedder_policy != null && contains(var.mimes, "text/html") ? [1] : []
       content {
         header   = "Cross-Origin-Embedder-Policy"
-        value    = try("${var.cross_origin_embedder_policy.value};report-to=${var.cross_origin_embedder_policy.report_to}",null)
+        value    = try("${var.cross_origin_embedder_policy.value};report-to=${var.cross_origin_embedder_policy.report_to}", null)
         override = try(var.cross_origin_embedder_policy.override, false)
       }
     }
@@ -179,7 +181,7 @@ resource "aws_cloudfront_response_headers_policy" "main" {
       for_each = var.cross_origin_opener_policy != null && contains(var.mimes, "text/html") ? [1] : []
       content {
         header   = "Cross-Origin-Opener-Policy"
-        value    = try("${var.cross_origin_opener_policy.value};report-to=${var.cross_origin_opener_policy.report_to}",null)
+        value    = try("${var.cross_origin_opener_policy.value};report-to=${var.cross_origin_opener_policy.report_to}", null)
         override = try(var.cross_origin_opener_policy.override, false)
       }
     }
@@ -191,21 +193,21 @@ resource "aws_cloudfront_response_headers_policy" "main" {
     #     override = try(var.cross_origin_opener_policy_report_only.override, false)
     #   }
     # }
-    
+
     dynamic "items" {
       for_each = var.cross_origin_resource_policy != null && contains(var.mimes, "text/html") ? [1] : []
       content {
         header   = "Cross-Origin-Resource-Policy"
-        value    = try("${var.cross_origin_resource_policy.value}",null)
+        value    = try("${var.cross_origin_resource_policy.value}", null)
         override = try(var.cross_origin_resource_policy.override, false)
       }
     }
-    
+
     dynamic "items" {
       for_each = var.document_policy != null && contains(var.mimes, "text/html") ? [1] : []
       content {
         header   = "Document-Policy"
-        value    = try("${var.document_policy.value},*;report-to=${var.document_policy.report_to}",null)
+        value    = try("${var.document_policy.value},*;report-to=${var.document_policy.report_to}", null)
         override = try(var.document_policy.override, false)
       }
     }
@@ -217,12 +219,12 @@ resource "aws_cloudfront_response_headers_policy" "main" {
     #     override = try(var.document_policy_report_only.override, false)
     #   }
     # }
-    
+
     dynamic "items" {
       for_each = var.integrity_policy != null && contains(var.mimes, "text/html") ? [1] : []
       content {
         header   = "Integrity-Policy"
-        value    = try("${var.integrity_policy.value},endpoints=(${var.integrity_policy.report_to})",null)
+        value    = try("${var.integrity_policy.value},endpoints=(${var.integrity_policy.report_to})", null)
         override = try(var.integrity_policy.override, false)
       }
     }
@@ -234,17 +236,17 @@ resource "aws_cloudfront_response_headers_policy" "main" {
     #     override = try(var.integrity_policy_report_only.override, false)
     #   }
     # }
-    
+
     dynamic "items" {
       for_each = var.network_error_logging != null && contains(var.mimes, "text/html") ? [1] : []
       content {
-        header   = "NEL"
-        value    = try(jsonencode({
+        header = "NEL"
+        value = try(jsonencode({
           "max_age" : var.network_error_logging.max_age,
           "include_subdomains" : var.network_error_logging.include_subdomains,
-          "failure_fraction": var.network_error_logging.failure_fraction,
+          "failure_fraction" : var.network_error_logging.failure_fraction,
           "report_to" : var.network_error_logging.report_to
-        }),null)
+        }), null)
         override = try(var.network_error_logging.override, false)
       }
     }
@@ -253,11 +255,11 @@ resource "aws_cloudfront_response_headers_policy" "main" {
       for_each = var.permissions_policy != null && (contains(var.mimes, "text/html") || contains(var.mimes, "application/javascript")) ? [1] : []
       content {
         header   = "Permissions-Policy"
-        value    = try("${var.permissions_policy.value}",null) # ,report-to=${var.permissions_policy.report_to} ignored
+        value    = try("${var.permissions_policy.value}", null) # ,report-to=${var.permissions_policy.report_to} ignored
         override = try(var.permissions_policy.override, false)
       }
     }
-    
+
     # dynamic "items" {
     #   for_each = var.permissions_policy_report_only != null && (contains(var.mimes, "text/html") || contains(var.mimes, "application/javascript")) ? [1] : []
     #   content {
@@ -266,7 +268,7 @@ resource "aws_cloudfront_response_headers_policy" "main" {
     #     override = try(var.permissions_policy_report_only.override, false)
     #   }
     # }
-    
+
     # Cannot be set using custom_headers
     # dynamic "items" {
     #   for_each = var.referrer_policy != null && contains(var.mimes, "text/html") ? [1] : []
@@ -276,7 +278,7 @@ resource "aws_cloudfront_response_headers_policy" "main" {
     #     override = try(var.referrer_policy.override, false)
     #   }
     # }
-    
+
     dynamic "items" {
       for_each = var.report_to != null && (contains(var.mimes, "text/html") || contains(var.mimes, "application/javascript")) ? [1] : []
       content {
@@ -294,7 +296,7 @@ resource "aws_cloudfront_response_headers_policy" "main" {
           #   "endpoints" : [{ "url" : "${var.report_to.backup}" }],
           #   "include_subdomains" : true
           # })
-        ]),null)
+        ]), null)
         override = try(var.report_to.override, false)
       }
     }
@@ -302,14 +304,14 @@ resource "aws_cloudfront_response_headers_policy" "main" {
       for_each = var.report_to != null && (contains(var.mimes, "text/html") || contains(var.mimes, "application/javascript")) ? [1] : []
       content {
         header = "Reporting-Endpoints"
-        value  = try(join(",", [
+        value = try(join(",", [
           "default=\"${var.report_to.default}\"",
           # "backup=\"${var.report_to.backup}\""
-        ]),null)
+        ]), null)
         override = try(var.report_to.override, false)
       }
     }
-    
+
     # dynamic "items" {
     #   for_each = var.require_document_policy != null && contains(var.mimes, "text/html") ? [1] : []
     #   content {
@@ -318,7 +320,7 @@ resource "aws_cloudfront_response_headers_policy" "main" {
     #     override = try(var.require_document_policy.override, false)
     #   }
     # }
-    
+
     # dynamic "items" {
     #   for_each = var.sec_required_document_policy != null && contains(var.mimes, "text/html") ? [1] : []
     #   content {
@@ -327,7 +329,7 @@ resource "aws_cloudfront_response_headers_policy" "main" {
     #     override = try(var.sec_required_document_policy.override, false)
     #   }
     # }
-    
+
     # Cannot be set using custom_headers
     # dynamic "items" {
     #   for_each = var.x_content_type_options != null && contains(var.mimes, "text/html") ? [1] : []
@@ -337,7 +339,7 @@ resource "aws_cloudfront_response_headers_policy" "main" {
     #     override = try(var.x_content_type_options.override, false)
     #   }
     # }
-    
+
     # Cannot be set using custom_headers
     # dynamic "items" {
     #   for_each = var.x_frame_options != null ? [1] : []
@@ -347,16 +349,16 @@ resource "aws_cloudfront_response_headers_policy" "main" {
     #     override = try(var.x_frame_options.override, false)
     #   }
     # }
-    
+
     dynamic "items" {
       for_each = var.x_permitted_cross_domain_policies != null ? [1] : []
       content {
         header   = "X-Permitted-Cross-Domain-Policies"
-        value    = try(var.x_permitted_cross_domain_policies.value,null)
+        value    = try(var.x_permitted_cross_domain_policies.value, null)
         override = try(var.x_permitted_cross_domain_policies.override, false)
       }
     }
-    
+
     dynamic "items" {
       for_each = var.custom_headers
       content {
@@ -365,6 +367,6 @@ resource "aws_cloudfront_response_headers_policy" "main" {
         override = items.value.override
       }
     }
-    
+
   }
 }
