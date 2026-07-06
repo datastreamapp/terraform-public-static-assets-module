@@ -188,7 +188,7 @@ resource "aws_cloudfront_distribution" "main" {
     for_each = var.error_codes
     content {
       error_code         = custom_error_response.key
-      response_code      = custom_error_response.key
+      response_code      = try(var.error_code_response_overrides[custom_error_response.key], tonumber(custom_error_response.key))
       response_page_path = custom_error_response.value
     }
   }

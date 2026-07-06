@@ -100,6 +100,21 @@ variable "error_codes" {
   default = {}
 }
 
+# Override the HTTP response code returned for a given error_code.
+# Keys must match keys in var.error_codes. Omitted keys fall back to the
+# error code itself (preserving v5.1.0 behaviour for existing callers).
+variable "error_code_response_overrides" {
+  type    = map(number)
+  default = {}
+  validation {
+    condition = alltrue([
+      for v in values(var.error_code_response_overrides) :
+      contains([200, 400, 403, 404, 405, 414, 416, 500, 501, 502, 503, 504], v)
+    ])
+    error_message = "Each value in error_code_response_overrides must be a CloudFront-supported response code: 200, 400, 403, 404, 405, 414, 416, 500, 501, 502, 503, 504."
+  }
+}
+
 variable "logging_bucket" {
   type    = string
   default = null
